@@ -1,0 +1,6 @@
+source 'https://rubygems.org/'
+
+gem 'rack', '~> 1.6'
+
+gem 'sinatra', '~> 1.4'
+gem 'omniauth-spiffy-stores-oauth2', :path => '../'
