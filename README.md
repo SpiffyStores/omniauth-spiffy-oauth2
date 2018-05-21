@@ -16,7 +16,7 @@ Then `bundle install`.
 
 ## Usage
 
-`OmniAuth::Strategies::SpiffyStores` is simply a Rack middleware. Read [the OmniAuth 1.0 docs](https://github.com/intridea/omniauth) for detailed instructions.
+`OmniAuth::Strategies::Spiffy` is simply a Rack middleware. Read [the OmniAuth 1.0 docs](https://github.com/intridea/omniauth) for detailed instructions.
 
 Here's a quick example, adding the middleware to a Rails app in `config/initializers/omniauth.rb`:
 
