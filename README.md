@@ -40,7 +40,7 @@ Authenticate the user by having them visit /auth/spiffy with a `store` query par
 
 You can configure the scope, which you pass in to the `provider` method via a `Hash`:
 
-* `scope`: A comma-separated list of permissions you want to request from the user. See [the SpiffyStores API docs](https://spiffystores.com.au/kb/tutorials_oauth) for a full list of available permissions.
+* `scope`: A comma-separated list of permissions you want to request from the user. See [the SpiffyStores API docs](https://www.spiffystores.com.au/kb/tutorials_oauth) for a full list of available permissions.
 
 For example, to request `read_products`, `read_orders` and `write_content` permissions and display the authentication page:
 
