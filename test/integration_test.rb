@@ -31,7 +31,7 @@ class IntegrationTest < Minitest::Test
   def test_authorize_overrides_site_with_https_scheme
     build_app setup: lambda { |env|
       params = Rack::Utils.parse_query(env['QUERY_STRING'])
-      env['omniauth.strategy'].options[:client_options][:site] = "http://#{params['shop']}"
+      env['omniauth.strategy'].options[:client_options][:site] = "http://#{params['store']}"
     }
 
     response = authorize('storedemo.spiffystores.com')
@@ -42,7 +42,7 @@ class IntegrationTest < Minitest::Test
     code = SecureRandom.hex(16)
 
     [
-      'foo.example.com',                # shop doesn't end with .spiffystores.com
+      'foo.example.com',                   # shop doesn't end with .spiffystores.com
       'http://storedemo.spiffystores.com', # shop contains protocol
       'storedemo.spiffystores.com/path',   # shop contains path
       'user@storedemo.spiffystores.com',   # shop contains user
@@ -80,13 +80,12 @@ class IntegrationTest < Minitest::Test
   def test_callback_custom_params
     access_token = SecureRandom.hex(16)
     code = SecureRandom.hex(16)
-
     expect_access_token_request(access_token, OmniAuth::Strategies::Spiffy::DEFAULT_SCOPE)
 
     now = Time.now.to_i
     params = { store: 'storedemo.spiffystores.com', code: code, timestamp: now, next: '/products?page=2&q=red%20shirt', state: opts["rack.session"]["omniauth.state"] }
-    encoded_params = "code=#{code}&next=/products?page=2%26q=red%2520shirt&store=storedemo.spiffystores.com&state=#{opts["rack.session"]["omniauth.state"]}&timestamp=#{now}"
-    params[:hmac] = OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, @secret, encoded_params)
+    encoded_params = OmniAuth::Strategies::Spiffy.encoded_params_for_signature(params)
+    params[:hmac] = OmniAuth::Strategies::Spiffy.hmac_sign(encoded_params, @secret)
 
     response = callback(params)
 
@@ -161,7 +160,7 @@ class IntegrationTest < Minitest::Test
               callback_path: '/admin/auth/legacy/callback',
               spiffy_stores_domain: 'spiffystores.dev:3000',
               setup: lambda { |env|
-                shop = Rack::Request.new(env).GET['shop']
+                shop = Rack::Request.new(env).GET['store']
                 shop += ".spiffystores.dev:3000" unless shop.include?(".")
                 env['omniauth.strategy'].options[:client_options][:site] = "https://#{shop}"
               }
@@ -301,12 +300,12 @@ class IntegrationTest < Minitest::Test
     params[:timestamp] ||= Time.now.to_i
 
     encoded_params = OmniAuth::Strategies::Spiffy.encoded_params_for_signature(params)
-    params['hmac'] = OmniAuth::Strategies::Spiffy.hmac_sign(encoded_params, @secret)
+    params[:hmac] = OmniAuth::Strategies::Spiffy.hmac_sign(encoded_params, @secret)
     params
   end
 
   def expect_access_token_request(access_token, scope, associated_user=nil)
-    FakeWeb.register_uri(:post, "https://storedemo.spiffystores.com/admin/oauth/access_token",
+    FakeWeb.register_uri(:post, "https://storedemo.spiffystores.com/admin/oauth/token",
                          body: JSON.dump(access_token: access_token, scope: scope, associated_user: associated_user),
                          content_type: 'application/json')
   end
