@@ -1,4 +1,4 @@
-[![Build Status](https://api.travis-ci.org/SpiffyStores/omniauth-spiffy-oauth2.png?branch=master)](http://travis-ci.org/SpiffyStores/omniauth-spiffy-oauth2)
+[![Build Status](https://api.travis-ci.com/SpiffyStores/omniauth-spiffy-oauth2.png?branch=master)](https://travis-ci.com/SpiffyStores/omniauth-spiffy-oauth2)
 
 # OmniAuth Spiffy Stores
 
