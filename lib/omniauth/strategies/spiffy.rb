@@ -14,7 +14,7 @@ module OmniAuth
 
       option :client_options, {
         :authorize_url => '/admin/oauth/authorize',
-        :token_url => '/admin/oauth/access_token'
+        :token_url => '/admin/oauth/token'
       }
 
       option :callback_url
