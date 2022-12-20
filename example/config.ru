@@ -1,5 +1,6 @@
 require 'bundler/setup'
 require 'sinatra/base'
+require 'active_support/core_ext/hash'
 require 'omniauth-spiffy-stores-oauth2'
 
 SCOPE = 'read_products,read_orders,read_customers,write_shipping'
@@ -18,7 +19,7 @@ class App < Sinatra::Base
       <title>Spiffy Stores Oauth2</title>
     </head>
     <body>
-      <form action="/auth/spiffy_stores" method="get">
+      <form action="/auth/spiffy" method="get">
       <label for="shop">Enter your store's URL:</label>
       <input type="text" name="shop" placeholder="your-shop-name.spiffystores.com">
       <button type="submit">Log In</button>

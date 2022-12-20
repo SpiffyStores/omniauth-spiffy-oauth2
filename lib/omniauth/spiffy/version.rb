@@ -1,5 +1,6 @@
+# frozen_string_literal: true
 module OmniAuth
   module Spiffy
-    VERSION = "1.2.1".freeze
+    VERSION = '2.3.2'
   end
 end

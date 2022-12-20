@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-# encoding: UTF-8
 
 require 'omniauth/strategies/oauth2'
 
@@ -15,11 +14,12 @@ module OmniAuth
 
       option :client_options, {
         :authorize_url => '/admin/oauth/authorize',
-        :token_url => '/admin/oauth/token'
+        :token_url => '/admin/oauth/access_token'
       }
 
       option :callback_url
       option :spiffy_stores_domain, 'spiffystores.com'
+      option :old_client_secret
 
       # When `true`, the user's permission level will apply (in addition to
       # the requested access scope) when making API requests to Spiffy Stores.
@@ -29,9 +29,21 @@ module OmniAuth
       # mismatch the requested scopes.
       option :validate_granted_scopes, true
 
-      option :setup, proc { |env|
-        request = Rack::Request.new(env)
-        env['omniauth.strategy'].options[:client_options][:site] = "https://#{request.GET['store']}"
+      option :setup, proc {|env|
+        strategy = env['omniauth.strategy']
+
+        spiffy_auth_params = strategy.session['spiffy.omniauth_params'] ||
+          strategy.session['omniauth.params'] ||
+          strategy.request.params
+
+        spiffy_auth_params = spiffy_auth_params && spiffy_auth_params.with_indifferent_access
+        store = if spiffy_auth_params && spiffy_auth_params['store']
+          "https://#{spiffy_auth_params['store']}"
+        else
+          ''
+        end
+
+        strategy.options[:client_options][:site] = store
       }
 
       uid { URI.parse(options[:client_options][:site]).host }
@@ -42,6 +54,7 @@ module OmniAuth
             'associated_user' => access_token['associated_user'],
             'associated_user_scope' => access_token['associated_user_scope'],
             'scope' => access_token['scope'],
+            'session' => access_token['session']
           }
         end
       end
@@ -60,8 +73,10 @@ module OmniAuth
 
         return false unless timestamp.to_i > Time.now.to_i - CODE_EXPIRES_AFTER
 
-        calculated_signature = self.class.hmac_sign(self.class.encoded_params_for_signature(params), options.client_secret)
-        Rack::Utils.secure_compare(calculated_signature, signature)
+        new_secret = options.client_secret
+        old_secret = options.old_client_secret
+
+        validate_signature(new_secret) || (old_secret && validate_signature(old_secret))
       end
 
       def valid_scope?(token)
@@ -73,7 +88,7 @@ module OmniAuth
 
       def normalized_scopes(scopes)
         scope_list = scopes.to_s.split(SCOPE_DELIMITER).map(&:strip).reject(&:empty?).uniq
-        ignore_scopes = scope_list.map { |scope| scope =~ /\Awrite_(.*)\z/ && "read_#{$1}" }.compact
+        ignore_scopes = scope_list.map { |scope| scope =~ /\A(unauthenticated_)?write_(.*)\z/ && "#{$1}read_#{$2}" }.compact
         scope_list - ignore_scopes
       end
 
@@ -81,7 +96,7 @@ module OmniAuth
         params = params.dup
         params.delete('hmac')
         params.delete('signature') # deprecated signature
-        params.map{|k,v| "#{URI.escape(k.to_s, '&=%')}=#{URI.escape(v.to_s, '&%')}"}.sort.join('&')
+        Rack::Utils.build_query(params.sort)
       end
 
       def self.hmac_sign(encoded_params, secret)
@@ -89,7 +104,12 @@ module OmniAuth
       end
 
       def valid_permissions?(token)
-        token && (options[:per_user_permissions] == !token['associated_user'].nil?)
+        return false unless token
+
+        return true if options[:per_user_permissions] && token['associated_user']
+        return true if !options[:per_user_permissions] && !token['associated_user']
+
+        false
       end
 
       def fix_https
@@ -113,21 +133,17 @@ module OmniAuth
         return fail!(:invalid_site, CallbackError.new(:invalid_site, "OAuth endpoint is not a Spiffy Stores site.")) unless valid_site?
         return fail!(:invalid_signature, CallbackError.new(:invalid_signature, "Signature does not match, it may have been tampered with.")) unless valid_signature?
 
-        error = request.params["error_reason"] || request.params["error"]
-
-        if error
-          return fail!(error, CallbackError.new(request.params["error"], request.params["error_description"] || request.params["error_reason"], request.params["error_uri"]))
-        else
-          token = build_access_token
-          unless valid_scope?(token)
-            return fail!(:invalid_scope, CallbackError.new(:invalid_scope, "Scope does not match, it may have been tampered with."))
-          end
-          unless valid_permissions?(token)
-            return fail!(:invalid_permissions, CallbackError.new(:invalid_permissions, "Requested API access mode does not match."))
-          end
+        token = build_access_token
+        unless valid_scope?(token)
+          return fail!(:invalid_scope, CallbackError.new(:invalid_scope, "Scope does not match, it may have been tampered with."))
+        end
+        unless valid_permissions?(token)
+          return fail!(:invalid_permissions, CallbackError.new(:invalid_permissions, "Requested API access mode does not match."))
         end
 
         super
+      rescue ::OAuth2::Error => e
+        fail!(:invalid_credentials, e)
       end
 
       def build_access_token
@@ -143,6 +159,14 @@ module OmniAuth
 
       def callback_url
         options[:callback_url] || full_host + script_name + callback_path
+      end
+
+      private
+
+      def validate_signature(secret)
+        params = request.GET
+        calculated_signature = self.class.hmac_sign(self.class.encoded_params_for_signature(params), secret)
+        Rack::Utils.secure_compare(calculated_signature, params['hmac'])
       end
     end
   end

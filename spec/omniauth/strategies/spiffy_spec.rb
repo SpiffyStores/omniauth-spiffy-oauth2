@@ -1,4 +1,3 @@
-require 'spec_helper'
 require 'omniauth-spiffy-oauth2'
 require 'base64'
 
@@ -16,7 +15,7 @@ describe OmniAuth::Strategies::Spiffy do
 
   subject do
     args = [@client_id, @client_secret, @options].compact
-    OmniAuth::Strategies::SpiffyStores.new(nil, *args).tap do |strategy|
+    OmniAuth::Strategies::Spiffy.new(nil, *args).tap do |strategy|
       strategy.stub(:request) { @request }
       strategy.stub(:session) { {} }
     end
@@ -68,7 +67,7 @@ describe OmniAuth::Strategies::Spiffy do
       @request.stub(:url) { "#{url_base}/page/path" }
       @request.stub(:scheme) { 'http' }
       subject.stub(:script_name) { "" } # to not depend from Rack env
-      subject.callback_url.should eq("#{url_base}/auth/spiffy_stores/callback")
+      subject.callback_url.should eq("#{url_base}/auth/spiffy/callback")
     end
   end
 
@@ -139,6 +138,82 @@ describe OmniAuth::Strategies::Spiffy do
     it 'allows custom port for spiffy_stores_domain' do
       @options = {:client_options => {:site => 'http://foo.example.com:3456/'}, :spiffy_stores_domain => 'example.com:3456'}
       subject.valid_site?.should eq(true)
+    end
+  end
+
+  describe '#valid_permissions?' do
+    let(:associated_user) do
+      {}
+    end
+
+    let(:token) do
+      {
+        'associated_user' => associated_user,
+      }
+    end
+
+    it 'returns false if there is no token' do
+      expect(subject.valid_permissions?(nil)).to be_falsey
+    end
+
+    context 'with per_user_permissions is present' do
+      before do
+        @options = @options.merge(per_user_permissions: true)
+      end
+
+      context 'when token does not have associated user' do
+        let(:associated_user) { nil }
+
+        it 'return false' do
+          expect(subject.valid_permissions?(token)).to be_falsey
+        end
+      end
+
+      context 'when token has associated user' do
+        it 'return true' do
+          expect(subject.valid_permissions?(token)).to be_truthy
+        end
+      end
+    end
+
+    context 'with per_user_permissions is false' do
+      before do
+        @options = @options.merge(per_user_permissions: false)
+      end
+
+      context 'when token does not have associated user' do
+        let(:associated_user) { nil }
+
+        it 'return true' do
+          expect(subject.valid_permissions?(token)).to be_truthy
+        end
+      end
+
+      context 'when token has associated user' do
+        it 'return false' do
+          expect(subject.valid_permissions?(token)).to be_falsey
+        end
+      end
+    end
+
+    context 'with per_user_permissions is nil' do
+      before do
+        @options = @options.merge(per_user_permissions: nil)
+      end
+
+      context 'when token does not have associated user' do
+        let(:associated_user) { nil }
+
+        it 'return true' do
+          expect(subject.valid_permissions?(token)).to be_truthy
+        end
+      end
+
+      context 'when token has associated user' do
+        it 'return false' do
+          expect(subject.valid_permissions?(token)).to be_falsey
+        end
+      end
     end
   end
 end

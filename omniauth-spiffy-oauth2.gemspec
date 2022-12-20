@@ -11,15 +11,19 @@ Gem::Specification.new do |s|
   s.homepage = 'https://github.com/SpiffyStores/omniauth-spiffy-oauth2'
   s.license = 'MIT'
 
+  s.metadata['allowed_push_host'] = 'https://rubygems.org'
+
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").map { |f| File.basename(f) }
   s.require_paths = ['lib']
   s.required_ruby_version = '>= 2.1.9'
 
-  s.add_runtime_dependency 'omniauth-oauth2', '~> 1.5.0'
+  s.add_runtime_dependency 'omniauth-oauth2', '~> 1.5'
+  s.add_runtime_dependency 'activesupport'
 
   s.add_development_dependency 'minitest', '~> 5.6'
+  s.add_development_dependency 'rspec', '~> 3.9.0'
   s.add_development_dependency 'fakeweb', '~> 1.3'
   s.add_development_dependency 'rake'
 end
